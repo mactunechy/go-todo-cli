@@ -12,6 +12,13 @@ import (
 	"github.com/mergestat/timediff"
 )
 
+type Todo struct {
+	id          int
+	description string
+	createdAt   string
+	status      string
+}
+
 func Save(todo string) error {
 	dbfile, err := dbFile()
 	if err != nil {
@@ -34,6 +41,72 @@ func Save(todo string) error {
 }
 
 func List() {
+	table := simpletable.New()
+
+	table.Header = &simpletable.Header{
+		Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignLeft, Text: "#"},
+			{Align: simpletable.AlignLeft, Text: "DESCRIPTION"},
+			{Align: simpletable.AlignRight, Text: "CREATED AT"},
+			{Align: simpletable.AlignRight, Text: "STATUS"},
+		},
+	}
+
+	records := findAll()
+
+	for _, record := range records {
+		timeAgo := formatTime(record.createdAt)
+
+		r := []*simpletable.Cell{
+			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%d", record.id)},
+			{Align: simpletable.AlignLeft, Text: record.description},
+			{Align: simpletable.AlignRight, Text: timeAgo},
+			{Align: simpletable.AlignRight, Text: record.status},
+		}
+
+		table.Body.Cells = append(table.Body.Cells, r)
+	}
+
+	table.SetStyle(simpletable.StyleCompactLite)
+	fmt.Println(table.String())
+}
+
+func Update(todoID int, newStatus string) error {
+	dbfile, err := dbFile()
+	if err != nil {
+		log.Fatalln("Db not found", err)
+	}
+	file, err := os.OpenFile(dbfile, os.O_RDWR, 0644)
+	if err != nil {
+		log.Fatal("failed to open file", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	rows, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalln("Failed to read", err)
+	}
+
+	if len(rows) < todoID {
+		log.Fatalf("Invalid ID. id out of range.%v", todoID)
+	}
+
+	rows[todoID-1][2] = newStatus
+
+	file.Seek(0, 0)
+	writer := csv.NewWriter(file)
+	err = writer.WriteAll(rows)
+	if err != nil {
+		log.Fatalln("Error updating TODO -> writing", err)
+	}
+
+	return nil
+}
+
+// Private functions
+
+func findAll() []Todo {
 	dbfile, err := dbFile()
 	if err != nil {
 		log.Fatalln("Db not found", err)
@@ -51,35 +124,18 @@ func List() {
 	}
 	defer file.Close()
 
-	table := simpletable.New()
-
-	table.Header = &simpletable.Header{
-		Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignLeft, Text: "#"},
-			{Align: simpletable.AlignLeft, Text: "DESCRIPTION"},
-			{Align: simpletable.AlignRight, Text: "CREATED AT"},
-			{Align: simpletable.AlignRight, Text: "STATUS"},
-		},
-	}
+	var todos []Todo
 
 	for idx, record := range records {
-		timeAgo := formatTime(record[1])
-
-		r := []*simpletable.Cell{
-			{Align: simpletable.AlignRight, Text: fmt.Sprintf("%d", idx+1)},
-			{Align: simpletable.AlignLeft, Text: record[0]},
-			{Align: simpletable.AlignRight, Text: timeAgo},
-			{Align: simpletable.AlignRight, Text: record[2]},
-		}
-
-		table.Body.Cells = append(table.Body.Cells, r)
+		todos = append(todos, Todo{
+			id:          idx + 1,
+			description: record[0],
+			createdAt:   record[1],
+			status:      record[2],
+		})
 	}
-
-	table.SetStyle(simpletable.StyleCompactLite)
-	fmt.Println(table.String())
+	return todos
 }
-
-// Private methods
 
 func formatTime(t string) string {
 	todoTime, err := time.Parse(time.RFC822, t)
