@@ -104,6 +104,48 @@ func Update(todoID int, newStatus string) error {
 	return nil
 }
 
+func Delete(id int) error {
+	dbfile, err := dbFile()
+	if err != nil {
+		log.Fatalln("Db not found", err)
+	}
+	file, err := os.OpenFile(dbfile, os.O_RDWR, 0644)
+	if err != nil {
+		log.Fatal("failed to open file", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	rows, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalln("Failed to read", err)
+	}
+
+	if len(rows) < id {
+		log.Fatalln("Invalid ID. id out of range.", id)
+	}
+
+	if id >= 0 && id < len(rows) {
+		rows = append(rows[:id], rows[id+1:]...)
+	}
+
+	file.Seek(0, 0)
+	writer := csv.NewWriter(file)
+	err = writer.WriteAll(rows)
+	if err != nil {
+		log.Fatalln("Error updating TODO -> writing", err)
+	}
+
+	err = file.Truncate(0)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("TODO item with ID", id, "deleted successfully")
+
+	return nil
+}
+
 // Private functions
 
 func findAll() []Todo {
