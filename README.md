@@ -2,7 +2,7 @@
 A simple CLI app to manage TODOs.
 
 ### Installation
-# todo
+ - todo
 
 ### Usage
 
