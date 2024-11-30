@@ -1,27 +1,30 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2024 Dellan Muchengapadare <mactunechy@gmail.com>
 */
 package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/mactunechy/go-todo-cli/core"
 	"github.com/spf13/cobra"
 )
 
 // addCmd represents the add command
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Adds an item to the todo list",
+	Long:  `Adds an item to the todo list by providing a description as an argument.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("add called")
+		todo := args[0]
+
+		err := core.Save(todo)
+		if err != nil {
+			log.Fatalln("Error saving todo", err) // do not shoe the error to the user
+		}
+		fmt.Println("Todo added successfully")
 	},
 }
 
